@@ -31,31 +31,63 @@ Logger.log("info", "INFO", "Start mode : " + (mode === "1" ? "Safe Mode" : "Fast
 
 const cachedCode = new Set<string>();
 
-const callback = async (): Promise<void> => {
+if (mode === "1") {
+    const callback = async (): Promise<void> => {
 
-    const code = genString(length);
-
-    if (cachedCode.has(code)) {
+        const code = genString(length);
+    
+        if (cachedCode.has(code)) {
+            await callback();
+        }
+    
+        cachedCode.add(code);
+    
+        const res = await isExistVanity(code, token);
+    
+        if (res === "exist") {
+            Logger.log("info", "INFO", `Code: ${code} | Exist`);
+        } else if (res === "not_exist") {
+            Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
+            prompt("Press enter to continue...");
+        } else if (res === "rate_limit") {
+            Logger.log("warn", "WARN", `Rate Limit`);
+            Logger.log("info", "INFO", `Sleep 1 second...`);
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+    
+        await new Promise((resolve) => setTimeout(resolve, 10));
         await callback();
     }
+    
+    await callback();
+}else {
+    // 複数同時並行実行
 
-    cachedCode.add(code);
+    const callback = async (): Promise<void> => {
 
-    const res = await isExistVanity(code, token);
+        const code = genString(length);
 
-    if (res === "exist") {
-        Logger.log("info", "INFO", `Code: ${code} | Exist`);
-    } else if (res === "not_exist") {
-        Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
-        prompt("Press enter to continue...");
-    } else if (res === "rate_limit") {
-        Logger.log("warn", "WARN", `Rate Limit`);
-        Logger.log("info", "INFO", `Sleep 1 second...`);
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        if (cachedCode.has(code)) {
+            await callback();
+        }
+
+        cachedCode.add(code);
+
+        isExistVanity(code, token).then((res) => {
+            if (res === "exist") {
+                Logger.log("info", "INFO", `Code: ${code} | Exist`);
+            } else if (res === "not_exist") {
+                Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
+                prompt("Press enter to continue...");
+            } else if (res === "rate_limit") {
+                Logger.log("warn", "WARN", `Rate Limit`);
+                Logger.log("info", "INFO", `Sleep 1 second...`);
+                setTimeout(callback, 1000);
+            }
+        })
+
+        await new Promise(() => setTimeout(callback, 100));
     }
 
-    await new Promise((resolve) => setTimeout(resolve, 10));
     await callback();
 }
-
-await callback();
