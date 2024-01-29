@@ -56,7 +56,7 @@ const processCode = async () => {
         Logger.log("info", "INFO", `Code: ${code} | Exist`);
     } else if (res === "not_exist") {
         Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
-        if (mode === "1") {
+        if (mode === "1" || mode === "2") {
             prompt("Press enter to continue...");
         } else if (mode === "3") {
             file.writeSync(new TextEncoder().encode(`Code: ${code} | Not Exist\n`));
