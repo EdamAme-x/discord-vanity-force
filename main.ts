@@ -47,7 +47,7 @@ if (mode === "3") {
 const processCode = async () => {
     const code = genString(length);
     if (cachedCode.has(code)) {
-        await processCode();
+        processCode();
         return;
     }
     cachedCode.add(code);
@@ -67,7 +67,7 @@ const processCode = async () => {
         await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     await new Promise((resolve) => setTimeout(resolve, 10));
-    await processCode();
+    processCode();
 };
 
 if (mode === "1") {
