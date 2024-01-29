@@ -1,6 +1,6 @@
 export async function isExistVanity(code: string, token: string): Promise<"exist" | "not_exist" | "rate_limit"> {
   const res = await fetch(
-    "https://discord.com/api/v9/invites/hj?with_counts=true&with_expiration=true",
+    "https://discord.com/api/v9/invites/" + code + "?with_counts=true&with_expiration=true",
     {
       headers: {
         accept: "*/*",
