@@ -18,11 +18,11 @@ if (isNaN(length) || length < 2) {
     Deno.exit(1);
 }
 
-Logger.log("info", "MODE", `1. Safe Mode | 2. Fast Mode (Unsafe)`);
+Logger.log("info", "MODE", `1. Safe Mode | 2. Fast Mode (Unsafe) | 3. Logging Mode (.2 Base)`);
 
 const mode = prompt("Mode : ") ?? "1";
 
-if (mode !== "1" && mode !== "2") {
+if (mode !== "1" && mode !== "2" && mode !== "3") {
     Logger.log("error", "ERROR", "Invalid mode");
     Deno.exit(1);
 }
@@ -31,63 +31,52 @@ Logger.log("info", "INFO", "Start mode : " + (mode === "1" ? "Safe Mode" : "Fast
 
 const cachedCode = new Set<string>();
 
-if (mode === "1") {
-    const callback = async (): Promise<void> => {
+let file: any;
 
-        const code = genString(length);
-    
-        if (cachedCode.has(code)) {
-            await callback();
-        }
-    
-        cachedCode.add(code);
-    
-        const res = await isExistVanity(code, token);
-    
-        if (res === "exist") {
-            Logger.log("info", "INFO", `Code: ${code} | Exist`);
-        } else if (res === "not_exist") {
-            Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
+if (mode === "3") {
+    const logFileName = (Date.now() - 1).toString() + ".log";
+    Logger.log("info", "INFO", `Logging to ./logs/${logFileName}`);
+
+    if (!Deno.statSync("./logs")) {
+        Deno.mkdirSync("./logs");
+    }
+
+    file = await Deno.open("./logs/" + logFileName, { write: true, create: true, truncate: true, read: true });
+}
+
+const processCode = async () => {
+    const code = genString(length);
+    if (cachedCode.has(code)) {
+        await processCode();
+        return;
+    }
+    cachedCode.add(code);
+    const res = await isExistVanity(code, token);
+    if (res === "exist") {
+        Logger.log("info", "INFO", `Code: ${code} | Exist`);
+    } else if (res === "not_exist") {
+        Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
+        if (mode === "1") {
             prompt("Press enter to continue...");
-        } else if (res === "rate_limit") {
-            Logger.log("warn", "WARN", `Rate Limit`);
-            Logger.log("info", "INFO", `Sleep 1 second...`);
-            await new Promise((resolve) => setTimeout(resolve, 1000));
+        } else if (mode === "3") {
+            file.writeSync(new TextEncoder().encode(`Code: ${code} | Not Exist\n`));
         }
-    
-        await new Promise((resolve) => setTimeout(resolve, 10));
-        await callback();
+    } else if (res === "rate_limit") {
+        Logger.log("warn", "WARN", `Rate Limit`);
+        Logger.log("info", "INFO", `Sleep 1 second...`);
+        await new Promise((resolve) => setTimeout(resolve, 1000));
     }
-    
-    await callback();
-}else {
-    // 複数同時並行実行
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    await processCode();
+};
 
-    const callback = async (): Promise<void> => {
-
-        const code = genString(length);
-
-        if (cachedCode.has(code)) {
-            await callback();
-        }
-
-        cachedCode.add(code);
-
-        isExistVanity(code, token).then((res) => {
-            if (res === "exist") {
-                Logger.log("info", "INFO", `Code: ${code} | Exist`);
-            } else if (res === "not_exist") {
-                Logger.log("info", "INFO", `Code: ${code} | Not Exist`);
-                prompt("Press enter to continue...");
-            } else if (res === "rate_limit") {
-                Logger.log("warn", "WARN", `Rate Limit`);
-                Logger.log("info", "INFO", `Sleep 1 second...`);
-                setTimeout(callback, 1000);
-            }
-        })
-
-        await new Promise(() => setTimeout(callback, 100));
+if (mode === "1") {
+    await processCode();
+} else if (mode === "2" || mode === "3") {
+    const concurrency = 5;
+    const promises = [];
+    for (let i = 0; i < concurrency; i++) {
+        promises.push(processCode());
     }
-
-    await callback();
+    await Promise.all(promises);
 }
